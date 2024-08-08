@@ -6,7 +6,7 @@ RUN apk add --no-cache curl tar gzip yq \
     && mv mc /usr/local/bin/
 
 COPY backup.sh /usr/local/bin/backup.sh
-COPY backup.yml /backup.yml
+# COPY backup.yml /backup.yml
 
 RUN chmod +x /usr/local/bin/backup.sh
 

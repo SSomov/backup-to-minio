@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  backup-to-minio:
+    image: backup-to-minio:latest
+    container_name: backup-to-minio
+    volumes:
+      - ./backup.yml:/backup.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /tmp:/tmp
+    env_file:
+      - .env
+    restart: unless-stopped
