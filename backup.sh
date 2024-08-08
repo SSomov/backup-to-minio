@@ -1,8 +1,8 @@
 #!/bin/bash
 
-set -o allexport
-source /backup.env
-set +o allexport
+# set -o allexport
+# source /backup.env
+# set +o allexport
 
 CONFIG_FILE="/backup.yml"
 
@@ -78,4 +78,4 @@ for backup_config in $(yq e '.backups[] | @base64' "$CONFIG_FILE"); do
     fi
 done
 
-cron -f
+crond -f
