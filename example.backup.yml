@@ -1,0 +1,20 @@
+backups:
+  - name: "project_data"
+    source: "/var/www/project_data"
+    type: "folder"
+    bucket: "project-backups"
+
+  - name: "db_backup"
+    source: "/var/lib/mysql"
+    type: "folder"
+    bucket: "db-backups"
+
+  - name: "logs"
+    source: "/var/log"
+    type: "folder"
+    bucket: "log-backups"
+
+  - name: "docker_volume"
+    source: "my_volume_name"
+    type: "volume"
+    bucket: "volume-backups"
