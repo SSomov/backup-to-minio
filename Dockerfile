@@ -1,15 +1,17 @@
-FROM alpine:latest
-
-RUN apk add --no-cache bash curl tar gzip yq \
-    && curl -O https://dl.min.io/client/mc/release/linux-amd64/mc \
-    && chmod +x mc \
-    && mv mc /usr/local/bin/
+FROM golang:1.20-alpine AS build
 
 WORKDIR /app
 
-COPY backup.sh /app/backup.sh
-# COPY backup.yml /backup.yml
+COPY go.mod go.sum ./
+RUN go mod download
 
-RUN chmod +x /app/backup.sh
+COPY . .
+RUN go build -o backup-tool .
 
-ENTRYPOINT ["sh","-c","/app/backup.sh"]
+FROM alpine:3.18
+
+RUN apk --no-cache add ca-certificates bash
+
+COPY --from=build /app/backup-tool /usr/local/bin/backup-tool
+
+ENTRYPOINT ["/usr/local/bin/backup-tool"]

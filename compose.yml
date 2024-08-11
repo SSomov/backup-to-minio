@@ -7,7 +7,7 @@ services:
     volumes:
       - ./backup.yml:/backup.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /tmp:/tmp
     env_file:
       - .env
     restart: unless-stopped
+    command: ["sh","-c","/app/backup.sh"]
