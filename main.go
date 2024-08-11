@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/joho/godotenv"
+	// "github.com/joho/godotenv"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"gopkg.in/yaml.v3"
@@ -124,10 +124,10 @@ func generateTarName(baseName string) string {
 // uploadToMinio загружает файл в MinIO
 func uploadToMinio(bucketName, objectName, filePath string) error {
 	// Загрузка переменных окружения из .env файла
-	err := godotenv.Load()
-	if err != nil {
-		return fmt.Errorf("error loading .env file: %v", err)
-	}
+	// err := godotenv.Load()
+	// if err != nil {
+	// 	return fmt.Errorf("error loading .env file: %v", err)
+	// }
 
 	// Чтение переменных окружения
 	endpoint := os.Getenv("MINIO_ENDPOINT")

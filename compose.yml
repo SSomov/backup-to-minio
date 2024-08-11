@@ -5,9 +5,11 @@ services:
     image: backup-to-minio:latest
     container_name: backup-to-minio
     volumes:
-      - ./backup.yml:/backup.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config.yml:/config.yml:ro
+      # - ./data:/data:ro
+      # - ./tmp:/tmp
+      - /var/run/docker.sock:/var/run/docker.sock
+      # - /var/lib/docker:/var/lib/docker
     env_file:
       - .env
-    restart: unless-stopped
-    command: ["sh","-c","/app/backup.sh"]
+    command: ["/usr/local/bin/backup-tool"]
