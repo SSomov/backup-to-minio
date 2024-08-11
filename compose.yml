@@ -6,10 +6,13 @@ services:
     container_name: backup-to-minio
     volumes:
       - ./config.yml:/config.yml:ro
-      # - ./data:/data:ro
+      - test:/data:ro
       # - ./tmp:/tmp
-      - /var/run/docker.sock:/var/run/docker.sock
-      # - /var/lib/docker:/var/lib/docker
+      # - /var/run/docker.sock:/var/run/docker.sock
     env_file:
       - .env
-    command: ["/usr/local/bin/backup-tool"]
+    command: ["/backup-tool"]
+
+volumes:
+  test:
+    external: true

@@ -10,8 +10,8 @@ RUN go build -o backup-tool .
 
 FROM alpine:3.18
 
-RUN apk --no-cache add ca-certificates docker-cli
+RUN apk --no-cache add ca-certificates
 
-COPY --from=build /app/backup-tool /usr/local/bin/backup-tool
+COPY --from=build /app/backup-tool /backup-tool
 
 # ENTRYPOINT ["/usr/local/bin/backup-tool"]
