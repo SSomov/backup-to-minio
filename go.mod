@@ -4,13 +4,17 @@ go 1.23.1
 
 require (
 	github.com/JCoupalK/go-pgdump v0.1.2-0.20240916063312-ea76abe2abdf
+	github.com/JamesStewy/go-mysqldump v0.2.2
 	github.com/go-co-op/gocron v1.37.0
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/joho/godotenv v1.5.1
 	github.com/minio/minio-go/v7 v7.0.77
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/DATA-DOG/go-sqlmock v1.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/goccy/go-json v0.10.3 // indirect

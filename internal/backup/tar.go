@@ -96,3 +96,32 @@ func GenerateTarName(baseName string) string {
 	timestamp := now.Format("2006-01-02T15:04:05Z")
 	return fmt.Sprintf("%s_%s.tar.gz", baseName, timestamp)
 }
+
+// GzFile сжимает указанный файл в формате .gz
+func GzFile(sourceFile string) (string, error) {
+	// Открываем исходный файл для чтения
+	inputFile, err := os.Open(sourceFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to open source file: %w", err)
+	}
+	defer inputFile.Close()
+
+	// Создаем выходной файл с расширением .gz
+	outputFile := sourceFile + ".gz"
+	compressedFile, err := os.Create(outputFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to create compressed file: %w", err)
+	}
+	defer compressedFile.Close()
+
+	// Создаем новый gzip.Writer
+	gzWriter := gzip.NewWriter(compressedFile)
+	defer gzWriter.Close()
+
+	// Копируем содержимое исходного файла в gzip.Writer
+	if _, err := io.Copy(gzWriter, inputFile); err != nil {
+		return "", fmt.Errorf("failed to write to compressed file: %w", err)
+	}
+
+	return outputFile, nil
+}

@@ -15,13 +15,23 @@ func ProcessBackup(backupItem config.ConfigBackup, bucketName string) error {
 	var filePath string
 	var err error
 
-	if backupItem.Type == "folder" {
+	// В зависимости от типа выполняем резервное копирование папки, PostgreSQL или MySQL базы данных
+	switch backupItem.Type {
+	case "folder":
+		// Для папки создаем tar-архив
 		tarName := GenerateTarName(backupItem.Name)
 		tmpFilePath := filepath.Join("/tmp", tarName)
 		filePath, err = TarFolder(backupItem.Source, tmpFilePath)
-	} else if backupItem.Type == "postgres" {
+
+	case "postgres":
+		// Для PostgreSQL делаем дамп базы данных
 		filePath, err = BackupPostgres(backupItem.Source, "/tmp")
-	} else {
+
+	case "mysql":
+		// Для MySQL делаем дамп базы данных
+		filePath, err = BackupMySQL(backupItem.Source, "/tmp")
+
+	default:
 		return fmt.Errorf("unsupported backup type: %s", backupItem.Type)
 	}
 

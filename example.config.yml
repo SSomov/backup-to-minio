@@ -14,3 +14,8 @@ backups:
     source: "postgresql://postgres:P@ssw0rd@127.0.0.1:5439/db_dev?sslmode=disable"
     type: "postgres"
     path-save: "test-data-postgres"
+  
+  - name: "mysql-db-backup"
+    source: "mysql://example_user:example_password@tcp(127.0.0.1:3306)/example_db"
+    type: "mysql"
+    path-save: "test-data-mysql" 

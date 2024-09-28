@@ -2,6 +2,7 @@ package backup
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"time"
@@ -9,10 +10,29 @@ import (
 	"github.com/JCoupalK/go-pgdump"
 )
 
+// getDBNameFromConnString извлекает имя базы данных из строки подключения
+func getDBNameFromConnString(connString string) (string, error) {
+	u, err := url.Parse(connString)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse connection string: %w", err)
+	}
+
+	dbName := u.Path
+	if dbName == "" || dbName == "/" {
+		return "", fmt.Errorf("database name not found in connection string")
+	}
+
+	return dbName[1:], nil // убираем ведущий слэш
+}
+
 // BackupPostgres выполняет резервное копирование базы данных PostgreSQL
 func BackupPostgres(connString, outputDir string) (string, error) {
+	dbName, err := getDBNameFromConnString(connString)
+	if err != nil {
+		return "", fmt.Errorf("failed to get database name: %w", err)
+	}
 	currentTime := time.Now()
-	dumpFilename := filepath.Join(outputDir, fmt.Sprintf("backup-%s.sql", currentTime.Format("20060102T150405")))
+	dumpFilename := filepath.Join(outputDir, fmt.Sprintf("%s-%s.sql", dbName, currentTime.Format("2006-01-02T15:04:05Z")))
 
 	// Создаем новый экземпляр дампера
 	dumper := pgdump.NewDumper(connString, 50)
@@ -24,11 +44,8 @@ func BackupPostgres(connString, outputDir string) (string, error) {
 		return "", fmt.Errorf("error dumping database: %w", err)
 	}
 
-	// Сжимаем файл дампа
-	archiveName := GenerateTarName("backup") // Имя архива можно изменить на любое
-	archivePath := filepath.Join(outputDir, archiveName)
-
-	if _, err := TarFolder(dumpFilename, archivePath); err != nil {
+	archiveName, err := GzFile(dumpFilename)
+	if err != nil {
 		return "", fmt.Errorf("error compressing dump file: %w", err)
 	}
 
@@ -39,5 +56,5 @@ func BackupPostgres(connString, outputDir string) (string, error) {
 		fmt.Printf("Original dump file %s removed\n", dumpFilename)
 	}
 
-	return archivePath, nil
+	return archiveName, nil
 }
