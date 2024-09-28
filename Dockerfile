@@ -14,4 +14,4 @@ RUN apk --no-cache add ca-certificates
 
 COPY --from=build /app/backup-tool /backup-tool
 
-# ENTRYPOINT ["/usr/local/bin/backup-tool"]
+CMD ["/backup-tool"]
