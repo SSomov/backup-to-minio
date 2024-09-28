@@ -1,4 +1,4 @@
-FROM golang:1.22.6-alpine AS build
+FROM golang:1.23.1-alpine AS build
 
 WORKDIR /app
 
@@ -6,7 +6,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go build -o backup-tool .
+RUN go build -o backup-tool ./cmd
 
 FROM alpine:3.18
 
