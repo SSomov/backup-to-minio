@@ -1,7 +1,6 @@
 package backup
 
 import (
-	// Импортируем пакет config
 	"backup-to-minio/internal/config"
 	"backup-to-minio/internal/minio"
 	"fmt"
@@ -13,14 +12,15 @@ import (
 // ProcessBackup обрабатывает резервное копирование для каждого элемента из конфигурации
 func ProcessBackup(backupItem config.ConfigBackup, bucketName string) error {
 	// Генерация имени архива с текущей датой и временем
-	tarName := GenerateTarName(backupItem.Name)
-	tmpFilePath := filepath.Join("/tmp", tarName)
-
+	var filePath string
 	var err error
 
-	// В зависимости от типа выполняем резервное копирование папки или Docker volume
 	if backupItem.Type == "folder" {
-		_, err = TarFolder(backupItem.Source, tmpFilePath)
+		tarName := GenerateTarName(backupItem.Name)
+		tmpFilePath := filepath.Join("/tmp", tarName)
+		filePath, err = TarFolder(backupItem.Source, tmpFilePath)
+	} else if backupItem.Type == "postgres" {
+		filePath, err = BackupPostgres(backupItem.Source, "/tmp")
 	} else {
 		return fmt.Errorf("unsupported backup type: %s", backupItem.Type)
 	}
@@ -30,23 +30,23 @@ func ProcessBackup(backupItem config.ConfigBackup, bucketName string) error {
 	}
 
 	// Определение пути в бакете, если указан path-save
-	objectName := tarName
+	objectName := filepath.Base(filePath)
 	if backupItem.PathSave != "" {
-		objectName = filepath.Join(backupItem.PathSave, tarName)
+		objectName = filepath.Join(backupItem.PathSave, objectName)
 	}
 
 	// Загрузка архива в MinIO
-	err = minio.UploadToMinio(bucketName, objectName, tmpFilePath)
+	err = minio.UploadToMinio(bucketName, objectName, filePath)
 	if err != nil {
 		return fmt.Errorf("failed to upload %s to MinIO: %w", objectName, err)
 	}
 
 	// Удаление временного файла
-	err = os.Remove(tmpFilePath)
+	err = os.Remove(filePath)
 	if err != nil {
-		log.Printf("Failed to remove temporary file %s: %v", tmpFilePath, err)
+		log.Printf("Failed to remove temporary file %s: %v", filePath, err)
 	} else {
-		log.Printf("Temporary file %s removed", tmpFilePath)
+		log.Printf("Temporary file %s removed", filePath)
 	}
 
 	log.Printf("File %s successfully uploaded to MinIO", objectName)

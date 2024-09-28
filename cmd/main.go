@@ -13,9 +13,8 @@ import (
 
 func main() {
 	// Загрузка переменных окружения из .env файла
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("No .env file loaded: %v", err)
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file loaded, proceeding without environment variables.")
 	}
 
 	// Чтение конфигурации

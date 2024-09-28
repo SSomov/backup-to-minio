@@ -9,3 +9,8 @@ backups:
     type: "folder"
     path-save: "test-data-shedule"
     schedule: "* * * * *"  # Run every minute
+
+  - name: "test-schedule-postgres"
+    source: "postgresql://postgres:P@ssw0rd@127.0.0.1:5439/db_dev?sslmode=disable"
+    type: "postgres"
+    path-save: "test-data-postgres"
