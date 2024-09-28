@@ -1,0 +1,11 @@
+backups:
+  - name: "test"
+    source: "./data"
+    type: "folder"
+    path-save: "test-data"
+  
+  - name: "test-schedule"
+    source: "./data"
+    type: "folder"
+    path-save: "test-data-shedule"
+    schedule: "* * * * *"  # Run every minute

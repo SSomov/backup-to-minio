@@ -8,10 +8,11 @@ import (
 
 // ConfigBackup представляет один элемент конфигурации резервного копирования
 type ConfigBackup struct {
-	Name     string `yaml:"name"`      // Имя резервной копии
-	Source   string `yaml:"source"`    // Источник данных для резервного копирования (папка или volume)
-	Type     string `yaml:"type"`      // Тип данных ("folder" или "volume")
-	PathSave string `yaml:"path-save"` // Путь для сохранения в бакете (опционально)
+	Name     string `yaml:"name"`                // Имя резервной копии
+	Source   string `yaml:"source"`              // Источник данных для резервного копирования (папка или volume)
+	Type     string `yaml:"type"`                // Тип данных ("folder" или "volume")
+	PathSave string `yaml:"path-save,omitempty"` // Путь для сохранения в бакете (опционально)
+	Schedule string `yaml:"schedule,omitempty"`  // Расписание для автоматического резервного копирования
 }
 
 // BackupConfig представляет полную конфигурацию резервного копирования
