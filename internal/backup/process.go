@@ -30,6 +30,12 @@ func ProcessBackup(cfg *config.BackupConfig, backupItem config.ConfigBackup, buc
 		tarName := fmt.Sprintf("%s-%s.tar.gz", backupItem.Name, timestamp)
 		tmpFilePath := filepath.Join(tmpDir, tarName)
 		filePath, err = TarFolder(backupItem.Source, tmpFilePath)
+	
+	case "mongodb":
+		filePath, err = BackupMongoDB(backupItem.Source, tmpDir)
+		if err == nil {
+			log.Printf("MongoDB backup created: %s", filePath)
+		}
 
 	case "postgres":
 		filePath, err = BackupPostgres(backupItem.Source, tmpDir)

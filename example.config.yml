@@ -19,4 +19,11 @@ backups:
   - name: "mysql-db-backup"
     source: "mysql://example_user:example_password@tcp(127.0.0.1:3306)/example_db"
     type: "mysql"
-    path-save: "data-mysql" 
+    path-save: "data-mysql"
+
+  - name: "mongo-prod"
+    source: "mongodb://user:pass@localhost:27017/mydb?authSource=admin"
+    type: "mongodb"
+    path-save: "mongo-backups"
+    schedule: "0 2 * * *"  # Every day at 2 AM
+  

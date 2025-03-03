@@ -13,7 +13,13 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o backup-tool ./cmd
 
 FROM alpine:3.21.3
 
-RUN apk add --no-cache postgresql17-client mysql-client ca-certificates
+RUN apk add --no-cache \
+    postgresql17-client \
+    mysql-client \
+    mongodb-tools \
+    ca-certificates \
+    tar \
+    gzip
 
 COPY --from=build /app/backup-tool /backup-tool
 
