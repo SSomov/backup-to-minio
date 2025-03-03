@@ -5,6 +5,8 @@ import (
 	"backup-to-minio/internal/config"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/go-co-op/gocron"
@@ -12,64 +14,69 @@ import (
 )
 
 func main() {
-	// Загрузка переменных окружения из .env файла
+	// Загрузка переменных окружения
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file loaded, proceeding without environment variables.")
+		log.Println("No .env file found, using only system environment variables")
 	}
 
-	// Чтение конфигурации
+	// Загрузка конфигурации
 	cfg, err := config.LoadConfig("config.yml")
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		log.Fatalf("Config loading failed: %v", err)
 	}
 
-	// Получение имени бакета из переменных окружения
+	// Получение имени бакета
 	bucketName := os.Getenv("MINIO_BUCKET_NAME")
 	if bucketName == "" {
-		log.Fatalf("MINIO_BUCKET_NAME is not set")
+		log.Fatal("MINIO_BUCKET_NAME environment variable is required")
 	}
 
-	// Создание нового планировщика
-	s := gocron.NewScheduler(time.UTC)
+	// Инициализация планировщика
+	scheduler := gocron.NewScheduler(time.UTC)
+	hasScheduledJobs := false
 
-	hasSchedule := false
+	// Обработка CTRL+C для graceful shutdown
+	stopChan := make(chan os.Signal, 1)
+	signal.Notify(stopChan, syscall.SIGINT, syscall.SIGTERM)
 
-	for _, backupItem := range cfg.Backups {
-		if backupItem.Schedule != "" {
-			// Запланировать выполнение резервного копирования
-			_, err := s.Cron(backupItem.Schedule).Do(func(item config.ConfigBackup) func() {
-				return func() {
-					err := backup.ProcessBackup(item, bucketName)
-					if err != nil {
-						log.Printf("Failed to process backup for %s: %v", item.Name, err)
-					} else {
-						log.Printf("Backup for %s completed successfully.", item.Name)
-					}
+	// Обработка всех бэкапов
+	for i := range cfg.Backups {
+		item := cfg.Backups[i]
+
+		if item.Schedule != "" {
+			// Запланированное выполнение
+			_, err := scheduler.Cron(item.Schedule).Do(func(c *config.BackupConfig, b config.ConfigBackup, bucket string) {
+				log.Printf("Starting scheduled backup: %s", b.Name)
+				if err := backup.ProcessBackup(c, b, bucket); err != nil {
+					log.Printf("Backup %s failed: %v", b.Name, err)
 				}
-			}(backupItem))
+			}, cfg, item, bucketName)
+
 			if err != nil {
-				log.Printf("Failed to schedule backup for %s: %v", backupItem.Name, err)
-			} else {
-				hasSchedule = true // Установить флаг, если расписание добавлено
+				log.Printf("Failed to schedule %s: %v", item.Name, err)
+				continue
 			}
+			hasScheduledJobs = true
 		} else {
-			// Если расписание не указано, выполнить резервное копирование сразу
-			err := backup.ProcessBackup(backupItem, bucketName)
-			if err != nil {
-				log.Printf("Failed to process backup for %s: %v", backupItem.Name, err)
-			} else {
-				log.Printf("Backup for %s completed successfully.", backupItem.Name)
+			// Немедленное выполнение
+			log.Printf("Starting immediate backup: %s", item.Name)
+			if err := backup.ProcessBackup(cfg, item, bucketName); err != nil {
+				log.Printf("Backup %s failed: %v", item.Name, err)
 			}
 		}
 	}
 
-	// Запуск планировщика, если есть хотя бы одно расписание
-	if hasSchedule {
-		s.StartAsync()
-		// Чтобы программа не завершалась, можно добавить бесконечный цикл
-		select {}
+	// Запуск планировщика если есть задания
+	if hasScheduledJobs {
+		scheduler.StartAsync()
+		log.Println("Scheduler started. Press CTRL+C to exit")
+
+		// Ожидание сигнала завершения
+		<-stopChan
+		log.Println("Shutting down scheduler...")
+		scheduler.Stop()
+		log.Println("Scheduler stopped")
 	} else {
-		log.Println("No scheduled backups found. Exiting program.")
-		os.Exit(0) // Завершение программы
+		log.Println("No scheduled backups found. Exiting")
 	}
 }

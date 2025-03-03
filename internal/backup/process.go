@@ -7,58 +7,75 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // ProcessBackup обрабатывает резервное копирование для каждого элемента из конфигурации
-func ProcessBackup(backupItem config.ConfigBackup, bucketName string) error {
-	// Генерация имени архива с текущей датой и временем
+func ProcessBackup(cfg *config.BackupConfig, backupItem config.ConfigBackup, bucketName string) error {
+	// Генерация временной метки для имен файлов
+	timestamp := time.Now().Format("2006-01-02T15-04-05Z")
+
+	// Создаем временную директорию для бэкапов
+	tmpDir := filepath.Join(os.TempDir(), "backups", cfg.Project)
+	if err := os.MkdirAll(tmpDir, 0755); err != nil {
+		return fmt.Errorf("failed to create temp directory: %w", err)
+	}
+
 	var filePath string
 	var err error
 
-	// В зависимости от типа выполняем резервное копирование папки, PostgreSQL или MySQL базы данных
+	// Обработка разных типов бэкапов
 	switch backupItem.Type {
 	case "folder":
-		// Для папки создаем tar-архив
-		tarName := GenerateTarName(backupItem.Name)
-		tmpFilePath := filepath.Join("/tmp", tarName)
+		tarName := fmt.Sprintf("%s-%s.tar.gz", backupItem.Name, timestamp)
+		tmpFilePath := filepath.Join(tmpDir, tarName)
 		filePath, err = TarFolder(backupItem.Source, tmpFilePath)
 
 	case "postgres":
-		// Для PostgreSQL делаем дамп базы данных
-		filePath, err = BackupPostgres(backupItem.Source, "/tmp")
+		filePath, err = BackupPostgres(backupItem.Source, tmpDir)
+		if err == nil {
+			log.Printf("Postgres backup created: %s", filePath)
+		}
 
 	case "mysql":
-		// Для MySQL делаем дамп базы данных
-		filePath, err = BackupMySQL(backupItem.Source, "/tmp")
+		filePath, err = BackupMySQL(backupItem.Source, tmpDir)
+		if err == nil {
+			log.Printf("MySQL backup created: %s", filePath)
+		}
 
 	default:
 		return fmt.Errorf("unsupported backup type: %s", backupItem.Type)
 	}
 
 	if err != nil {
-		return fmt.Errorf("failed to create backup for %s: %w", backupItem.Source, err)
+		return fmt.Errorf("backup failed for %s: %w", backupItem.Name, err)
 	}
 
-	// Определение пути в бакете, если указан path-save
-	objectName := filepath.Base(filePath)
-	if backupItem.PathSave != "" {
-		objectName = filepath.Join(backupItem.PathSave, objectName)
+	// Формирование пути в бакете
+	objectPath := backupItem.PathSave
+	if objectPath == "" {
+		objectPath = backupItem.Name
+	}
+	objectName := filepath.Join(objectPath, filepath.Base(filePath))
+
+	// Параметры для загрузки в MinIO
+	uploadParams := minio.UploadParams{
+		Project:    cfg.Project,
+		BucketName: bucketName,
+		ObjectPath: objectName,
+		FilePath:   filePath,
 	}
 
-	// Загрузка архива в MinIO
-	err = minio.UploadToMinio(bucketName, objectName, filePath)
-	if err != nil {
-		return fmt.Errorf("failed to upload %s to MinIO: %w", objectName, err)
+	// Загрузка в MinIO
+	if err := minio.UploadToMinio(uploadParams); err != nil {
+		return fmt.Errorf("minio upload failed: %w", err)
 	}
 
-	// Удаление временного файла
-	err = os.Remove(filePath)
-	if err != nil {
-		log.Printf("Failed to remove temporary file %s: %v", filePath, err)
-	} else {
-		log.Printf("Temporary file %s removed", filePath)
+	// Очистка временных файлов
+	if err := os.Remove(filePath); err != nil {
+		log.Printf("Warning: failed to remove temp file %s: %v", filePath, err)
 	}
+	log.Printf("Successfully processed backup: %s", backupItem.Name)
 
-	log.Printf("File %s successfully uploaded to MinIO", objectName)
 	return nil
 }

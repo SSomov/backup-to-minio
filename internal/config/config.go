@@ -2,6 +2,8 @@ package config
 
 import (
 	"os"
+	
+	"fmt"
 
 	"gopkg.in/yaml.v3"
 )
@@ -17,7 +19,8 @@ type ConfigBackup struct {
 
 // BackupConfig представляет полную конфигурацию резервного копирования
 type BackupConfig struct {
-	Backups []ConfigBackup `yaml:"backups"` // Список всех резервных копий
+	Project string         `yaml:"project"`  // Глобальное имя проекта
+	Backups []ConfigBackup `yaml:"backups"`  // Список всех резервных копий
 }
 
 // LoadConfig загружает конфигурацию резервного копирования из YAML файла
@@ -32,6 +35,11 @@ func LoadConfig(filePath string) (*BackupConfig, error) {
 	decoder := yaml.NewDecoder(file)
 	if err := decoder.Decode(&config); err != nil {
 		return nil, err
+	}
+
+	// Валидация обязательного поля project
+	if config.Project == "" {
+		return nil, fmt.Errorf("project name is required in config")
 	}
 
 	return &config, nil

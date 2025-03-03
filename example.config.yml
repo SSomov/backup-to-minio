@@ -1,21 +1,22 @@
+project: "test"
 backups:
   - name: "test"
     source: "./data"
     type: "folder"
-    path-save: "test-data"
+    path-save: "data"
   
   - name: "test-schedule"
     source: "./data"
     type: "folder"
-    path-save: "test-data-shedule"
+    path-save: "data-shedule"
     schedule: "* * * * *"  # Run every minute
 
   - name: "test-schedule-postgres"
     source: "postgresql://postgres:P@ssw0rd@127.0.0.1:5439/db_dev?sslmode=disable"
     type: "postgres"
-    path-save: "test-data-postgres"
+    path-save: "data-postgres"
   
   - name: "mysql-db-backup"
     source: "mysql://example_user:example_password@tcp(127.0.0.1:3306)/example_db"
     type: "mysql"
-    path-save: "test-data-mysql" 
+    path-save: "data-mysql" 

@@ -1,73 +1,107 @@
 package backup
 
 import (
-	"database/sql"
+	"bytes"
 	"fmt"
+	"net/url"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
-
-	"github.com/JamesStewy/go-mysqldump"
-	_ "github.com/go-sql-driver/mysql"
+	"time"
 )
 
-// extractDBName извлекает имя базы данных из строки подключения
-func extractDBName(connString string) string {
-	// Найдите последний символ '/' и верните все, что после него
-	lastSlash := strings.LastIndex(connString, "/")
-	if lastSlash == -1 || lastSlash == len(connString)-1 {
-		return ""
-	}
-	return connString[lastSlash+1:]
+// MySQLParams содержит параметры подключения к MySQL
+type MySQLParams struct {
+	User     string
+	Password string
+	Host     string
+	Port     string
+	DBName   string
 }
 
-// BackupMySQL выполняет резервное копирование базы данных MySQL
+// parseMySQLConnString парсит строку подключения MySQL
+func parseMySQLConnString(connString string) (*MySQLParams, error) {
+	// Удаляем префикс mysql:// при наличии
+	connString = strings.TrimPrefix(connString, "mysql://")
+
+	// Парсим как URL
+	u, err := url.Parse(connString)
+	if err != nil {
+		return nil, fmt.Errorf("invalid connection string: %w", err)
+	}
+
+	// Извлекаем параметры
+	password, _ := u.User.Password()
+	host, port := u.Hostname(), u.Port()
+	if port == "" {
+		port = "3306" // Порт по умолчанию
+	}
+
+	return &MySQLParams{
+		User:     u.User.Username(),
+		Password: password,
+		Host:     host,
+		Port:     port,
+		DBName:   strings.TrimPrefix(u.Path, "/"),
+	}, nil
+}
+
+// BackupMySQL выполняет резервное копирование с использованием mysqldump
 func BackupMySQL(connString, outputDir string) (string, error) {
-	// Получаем имя базы данных из строки подключения
-	dbName := extractDBName(connString)
-	if dbName == "" {
-		return "", fmt.Errorf("database name is empty")
-	}
-
-	// Удаляем префикс "mysql://" из строки подключения, если он есть
-	if strings.HasPrefix(connString, "mysql://") {
-		connString = strings.TrimPrefix(connString, "mysql://")
-	}
-
-	filename := fmt.Sprintf("%s-%s", dbName, "2006-01-02T15:04:05Z")
-
-	// Открытие подключения к базе данных
-	db, err := sql.Open("mysql", connString)
+	params, err := parseMySQLConnString(connString)
 	if err != nil {
-		return "", fmt.Errorf("error opening database: %w", err)
+		return "", fmt.Errorf("connection string parse error: %w", err)
 	}
-	defer db.Close()
 
-	// Регистрация базы данных с mysqldump
-	dumper, err := mysqldump.Register(db, outputDir, filename)
+	if params.DBName == "" {
+		return "", fmt.Errorf("database name is required")
+	}
+
+	// Генерируем имя файла
+	timestamp := time.Now().Format("2006-01-02T15-04-05Z")
+	dumpFilename := filepath.Join(outputDir, fmt.Sprintf("%s-%s.sql", params.DBName, timestamp))
+
+	// Формируем команду mysqldump
+	cmd := exec.Command(
+		"mysqldump",
+		"-h", params.Host,
+		"-P", params.Port,
+		"-u", params.User,
+		"--password="+params.Password,
+		"--single-transaction",
+		"--routines",
+		"--triggers",
+		params.DBName,
+	)
+
+	// Настраиваем вывод
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	// Создаем файл для дампа
+	outputFile, err := os.Create(dumpFilename)
 	if err != nil {
-		return "", fmt.Errorf("error registering database: %w", err)
+		return "", fmt.Errorf("failed to create dump file: %w", err)
+	}
+	defer outputFile.Close()
+	cmd.Stdout = outputFile
+
+	// Выполняем команду
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("mysqldump failed: %v\nStderr: %s", err, stderr.String())
 	}
 
-	// Выполняем дамп базы данных
-	dumpFilename, err := dumper.Dump()
-	if err != nil {
-		return "", fmt.Errorf("error dumping database: %w", err)
-	}
-
+	// Сжимаем файл
 	archiveName, err := GzFile(dumpFilename)
 	if err != nil {
-		return "", fmt.Errorf("error compressing dump file: %w", err)
+		return "", fmt.Errorf("compression failed: %w", err)
 	}
 
-	// Удаляем оригинальный файл дампа
+	// Удаляем оригинальный файл
 	if err := os.Remove(dumpFilename); err != nil {
-		fmt.Printf("Failed to remove original dump file %s: %v\n", dumpFilename, err)
-	} else {
-		fmt.Printf("Original dump file %s removed\n", dumpFilename)
+		fmt.Printf("Warning: failed to remove temp file %s: %v\n", dumpFilename, err)
 	}
-
-	// Закрытие дампера
-	dumper.Close()
 
 	return archiveName, nil
 }
